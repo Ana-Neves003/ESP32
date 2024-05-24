@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "driver/i2s.h"
 
-#define I2S_SAMPLE_RATE     (16000)    // Taxa de amostragem do I2S
+#define I2S_SAMPLE_RATE     (44100)    // Taxa de amostragem do I2S
 #define I2S_NUM             (0)        // Número do módulo I2S
 #define I2S_BCK_IO          (GPIO_NUM_21) // Pino BCK (Bit Clock)
 #define I2S_DATA_IN_IO      (GPIO_NUM_4)  // Pino de entrada de dados I2S

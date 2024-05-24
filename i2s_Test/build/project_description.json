@@ -1,7 +1,7 @@
 {
     "version":            "1",
     "project_name":       "i2s_Test",
-    "project_version":    "56e6a38-dirty",
+    "project_version":    "d3f5133-dirty",
     "project_path":       "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_Test",
     "idf_path":           "C:/Users/Dell/esp/v4.4.7/esp-idf",
     "build_dir":          "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_Test/build",
