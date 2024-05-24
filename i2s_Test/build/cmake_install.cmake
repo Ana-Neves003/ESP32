@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Dell/Codigos/FreeRTOS/ESP32/i2s_Test
+# Install script for directory: C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_Test
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Users/Dell/Codigos/FreeRTOS/ESP32/i2s_Test/build/esp-idf/cmake_install.cmake")
+  include("C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_Test/build/esp-idf/cmake_install.cmake")
 
 endif()
 
@@ -51,5 +51,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "C:/Users/Dell/Codigos/FreeRTOS/ESP32/i2s_Test/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_Test/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
