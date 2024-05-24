@@ -22,6 +22,10 @@
 #define PIN_NUM_CS          (GPIO_NUM_22)   // Definição do pino CS (Chip Select) para SPI
 #define MOUNT_POINT         "/sdcard"       // Ponto de montagem do sistema de arquivos no cartão SD
 
+
+// Configuração do canal DMA (se necessário)
+#define SPI_DMA_CHAN   1               // Definição do canal DMA para SPI
+
 // Tag para logging
 static const char *TAG = "i2s_sd_card"; 
 
@@ -72,30 +76,54 @@ void i2s_task(void *pvParameter) {
         
 }
 
-void sd_card_setup(void) {
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = true,
-        .max_files = 5
+static esp_err_t init_sd_card(void) {
+    esp_err_t ret;                          // Variável para armazenar o resultado das funções
+
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT(); // Configuração padrão do host SPI
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = PIN_NUM_MOSI,        // Configuração do pino MOSI para SPI
+        .miso_io_num = PIN_NUM_MISO,        // Configuração do pino MISO para SPI
+        .sclk_io_num = PIN_NUM_CLK,         // Configuração do pino CLK para SPI
+        .quadwp_io_num = -1,                // Pino não usado
+        .quadhd_io_num = -1,                // Pino não usado
+        .max_transfer_sz = 4000,            // Tamanho máximo de transferência
     };
 
-    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-
-    sdmmc_card_t* card;
-    esp_err_t ret = esp_vfs_fat_sdmmc_mount(MOUNT_POINT, &host, &slot_config, &mount_config, &card);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Falha ao montar a partição FAT no SD card. Código de erro = %d", ret);
-        return;
+    ret = spi_bus_initialize(host.slot, &bus_cfg, SPI_DMA_CHAN); // Inicializa o barramento SPI
+    if (ret != ESP_OK) {                    // Verifica se a inicialização foi bem-sucedida
+        ESP_LOGE(TAG, "Failed to initialize bus."); // Log de erro se falhou
+        return ret;                         // Retorna o código de erro
     }
 
-    ESP_LOGI(TAG, "Cartão SD inicializado e pronto para gravação.");
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT(); // Configuração padrão do dispositivo SPI
+    slot_config.gpio_cs = PIN_NUM_CS;      // Configuração do pino CS para SPI
+    slot_config.host_id = host.slot;       // ID do host
+
+    sdmmc_card_t *card;                    // Ponteiro para a estrutura de cartão SD
+    const esp_vfs_fat_mount_config_t mount_config = {
+        .format_if_mount_failed = true,    // Formatar se a montagem falhar
+        .max_files = 5,                    // Número máximo de arquivos abertos simultaneamente
+        .allocation_unit_size = 16 * 1024  // Tamanho da unidade de alocação
+    };
+
+    ret = esp_vfs_fat_sdspi_mount(MOUNT_POINT, &host, &slot_config, &mount_config, &card); // Monta o sistema de arquivos FAT no cartão SD
+    if (ret != ESP_OK) {                    // Verifica se a montagem foi bem-sucedida
+        ESP_LOGE(TAG, "Failed to mount filesystem."); // Log de erro se falhou
+        spi_bus_free(host.slot);            // Libera o barramento SPI
+        return ret;                         // Retorna o código de erro
+    }
+
+    sdmmc_card_print_info(stdout, card);    // Imprime informações do cartão SD
+    return ESP_OK; 
 }
 
 void app_main() {
     esp_log_level_set(TAG, ESP_LOG_INFO);
 
-    // Configuração do cartão SD
-    sd_card_setup();
+    if (init_sd_card() != ESP_OK) {         // Inicializa o cartão SD e verifica se foi bem-sucedido
+        ESP_LOGE(TAG, "Failed to initialize SD card"); // Log de erro se falhou
+        return;                             // Sai da função se falhou
+    }
 
     // Abertura do arquivo para escrita
     file = fopen("/sdcard/gravacao.raw", "w");
