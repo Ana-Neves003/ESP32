@@ -1,7 +1,7 @@
 {
     "version":            "1",
     "project_name":       "i2s_SD_Card",
-    "project_version":    "249d430-dirty",
+    "project_version":    "f68e4fd-dirty",
     "project_path":       "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card",
     "idf_path":           "C:/Users/Dell/esp/v4.4.7/esp-idf",
     "build_dir":          "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card/build",

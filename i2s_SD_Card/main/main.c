@@ -57,24 +57,58 @@ void i2s_setup(void) {
     i2s_set_pin(I2S_NUM, &pin_config);
 }
 
-void i2s_task(void *pvParameter) {
+void vTask_REC(void *pvParameter) {
     uint8_t buffer[1024];
     size_t bytes_read = 0;
+    const int recording_time_ms = 10000; // 10 segundos em milissegundos
+    const int delay_time_ms = 100; // 100 milissegundos de delay
+    int elapsed_time_ms = 0;
 
-
-    while (1) {
-        i2s_read(I2S_NUM, buffer, sizeof(buffer), &bytes_read, portMAX_DELAY);
-        fwrite(buffer, 1, bytes_read, file);
-
-        for (int i = 0; i < bytes_read; i++) {
-            printf("%02x ", buffer[i]);
-        }
-        printf("\n");
-
-        vTaskDelay(pdMS_TO_TICKS(100));
+    // Abre o arquivo uma vez no início da task
+    file = fopen(MOUNT_POINT "/gravacao.raw", "w"); // Abre o arquivo em modo texto para escrita
+    if (file == NULL) { // Verifica se o arquivo foi aberto com sucesso
+        ESP_LOGE(TAG, "Failed to open file for writing"); // Log de erro se falhou
+        vTaskDelete(NULL); // Sai da task se falhou
+        return;
     }
-        
+
+    ESP_LOGI(TAG, "Iniciando a gravação");
+
+    while (elapsed_time_ms < recording_time_ms) {
+        // Lê dados do I2S
+        if (i2s_read(I2S_NUM, buffer, sizeof(buffer), &bytes_read, portMAX_DELAY) == ESP_OK) {
+            // Escreve os dados lidos no arquivo em formato hexadecimal
+            for (int i = 0; i < bytes_read; i++) {
+                fprintf(file, "%02x ", buffer[i]);
+            }
+            fprintf(file, "\n");
+            fflush(file); // Garante que os dados sejam escritos no arquivo
+
+            // Imprime os dados no monitor serial
+            ESP_LOGI(TAG, "Gravando %d bytes no arquivo", bytes_read);
+            for (int i = 0; i < bytes_read; i++) {
+                printf("%02x ", buffer[i]);
+            }
+            printf("\n");
+        } else {
+            ESP_LOGE(TAG, "Erro ao ler dados do I2S");
+        }
+
+        // Adiciona um delay para evitar saturação da task
+        vTaskDelay(pdMS_TO_TICKS(delay_time_ms));
+        elapsed_time_ms += delay_time_ms;
+    }
+
+    ESP_LOGI(TAG, "Gravação concluída");
+
+    // Fecha o arquivo após 10 segundos
+    fclose(file);
+    ESP_LOGI(TAG, "Arquivo fechado");
+    
+    // Encerra a task
+    vTaskDelete(NULL);
 }
+
 
 static esp_err_t init_sd_card(void) {
     esp_err_t ret;                          // Variável para armazenar o resultado das funções
@@ -119,21 +153,23 @@ static esp_err_t init_sd_card(void) {
 
 void app_main() {
     esp_log_level_set(TAG, ESP_LOG_INFO);
+    ESP_LOGI(TAG, "Iniciando o app_main");
+
+    i2s_setup(); 
 
     if (init_sd_card() != ESP_OK) {         // Inicializa o cartão SD e verifica se foi bem-sucedido
         ESP_LOGE(TAG, "Failed to initialize SD card"); // Log de erro se falhou
         return;                             // Sai da função se falhou
     }
+    ESP_LOGI(TAG, "SD Card inicializado com sucesso");
 
     // Abertura do arquivo para escrita
-    file = fopen("/sdcard/gravacao.raw", "w");
-    if (file == NULL) {
-        ESP_LOGE(TAG, "Não foi possível abrir o arquivo para escrita");
-        return;
-    }
-
-    i2s_setup();
+    //file = fopen("/sdcard/gravacao.raw", "w");
+    //if (file == NULL) {
+        //ESP_LOGE(TAG, "Não foi possível abrir o arquivo para escrita");
+        //return;
+    //}       
 
     
-    xTaskCreatePinnedToCore(i2s_task, "i2s_task", 8192, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(vTask_REC, "vTask_REC", 8192, NULL, 5, NULL, 1);
 }
