@@ -1,0 +1,8 @@
+0000000000000000000000000000000000000000 56e6a386245153504a4ed6cbe873e3eef97e71f8 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716507042 -0300	clone: from https://github.com/Ana-Neves003/ESP32.git
+56e6a386245153504a4ed6cbe873e3eef97e71f8 d3f513354eb46894f2834a848370c415f96b9908 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716564786 -0300	commit: Atualizações i2s e primeira versão do i2s_button
+d3f513354eb46894f2834a848370c415f96b9908 249d4303064184c33941fe92c84c12ea25d8e366 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716575104 -0300	commit: atualização do i2s
+249d4303064184c33941fe92c84c12ea25d8e366 fb4fed9e8a856c66f0131a89b61cd5d3ce56e57c Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716579656 -0300	commit: i2s_SD_Card atualizado com problema no armazenamento dos dados
+fb4fed9e8a856c66f0131a89b61cd5d3ce56e57c f68e4fd04ce0f1353178db1263af7d8995ac3206 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716583985 -0300	commit: Código usando duas tasks para exemplo
+f68e4fd04ce0f1353178db1263af7d8995ac3206 8f85e09b690adf3a00bc79728278d667299ca7d2 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716671649 -0300	commit: Atualizações no código do i2s_SD_Card e códigos exemplos usandovTask no FreeRTOS
+8f85e09b690adf3a00bc79728278d667299ca7d2 76cac7e64a49370a7b7e54c9cc20bb056254e875 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716674394 -0300	commit: Atualizando os códigos vTask
+76cac7e64a49370a7b7e54c9cc20bb056254e875 9fae29a7f2779eac9e42436d453f1cb2add92cc9 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716679010 -0300	commit: Código para mostrar como passa o parametro nas Tasks
