@@ -1,7 +1,7 @@
 {
     "version":            "1",
     "project_name":       "xSemaphoreBinaryISR",
-    "project_version":    "c7d10c03",
+    "project_version":    "e0cbf555-dirty",
     "project_path":       "C:/Users/Dell/Codigos/GITHUB/ESP32/Curso_FreeRTOS/Semaforos/xSemaphoreBinaryISR",
     "idf_path":           "C:/Users/Dell/esp/v4.4.7/esp-idf",
     "build_dir":          "C:/Users/Dell/Codigos/GITHUB/ESP32/Curso_FreeRTOS/Semaforos/xSemaphoreBinaryISR/build",
