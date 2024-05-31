@@ -74,26 +74,26 @@ static void i2s_setup(void) {
 
 // Tarefa para capturar áudio usando o I2S
 void i2s_task(void *pvParameter) {
-    uint8_t buffer[1024];
-    //char data_buffer[DATA_BUFFER_SIZE];
+    //uint8_t buffer[1024];
+    char data_buffer[DATA_BUFFER_SIZE];
     size_t bytes_read = 0;
 
     while (1) {
-        i2s_read(I2S_NUM, buffer, sizeof(buffer), &bytes_read, portMAX_DELAY);
-        //i2s_read(I2S_NUM, data_buffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+        //i2s_read(I2S_NUM, buffer, sizeof(buffer), &bytes_read, portMAX_DELAY);
+        i2s_read(I2S_NUM, data_buffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
         
         // Grava os dados no cartão SD
         FILE *file = fopen("/sdcard/audio.raw", "ab");
         if (file != NULL) {
-            fwrite(buffer, 1, bytes_read, file);
-            //fwrite(data_buffer, 1, bytes_read, file);
+            //fwrite(buffer, 1, bytes_read, file);
+            fwrite(data_buffer, 1, bytes_read, file);
             fclose(file);
         }
 
         // Imprime os dados adquiridos
         for (int i = 0; i < bytes_read; i++) {
-            printf("%02x ", buffer[i]);
-            //printf("%02x ", data_buffer[i]);
+            //printf("%02x ", buffer[i]);
+            printf("%02x ", data_buffer[i]);
             //printf("%x %x %x %x %x %x %x\n", data_buffer[0], data_buffer[1], data_buffer[2], data_buffer[3], data_buffer[4], data_buffer[5], data_buffer[6]);
         }
         printf("\n");
