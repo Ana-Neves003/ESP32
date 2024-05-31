@@ -2,6 +2,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+//#include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "driver/i2s.h"
@@ -43,6 +44,7 @@ void i2s_task(void *pvParameter);
 void sd_card_task(void *pvParameter);
 
 static const char *TAG = "i2s_sd_card_test";
+//QueueHandle_t audio_queue;
 
 // Configura o I2S
 static void i2s_setup(void) {
@@ -179,11 +181,14 @@ void sd_card_task(void *pvParameter) {
 
     // Grava áudio por RECORDING_TIME_SECONDS segundos
     for (int i = 0; i < RECORDING_TIME_SECONDS; i++) {
-        uint8_t buffer[1024];
+        char data_buffer[DATA_BUFFER_SIZE];
+        //uint8_t buffer[1024];
         size_t bytes_read = 0;
 
         // Lê dados do buffer I2S
-        i2s_read(I2S_NUM, buffer, sizeof(buffer), &bytes_read, portMAX_DELAY);
+        //i2s_read(I2S_NUM, buffer, sizeof(buffer), &bytes_read, portMAX_DELAY);
+        i2s_read(I2S_NUM, data_buffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to read audio data from I2S.");
             break;
@@ -191,7 +196,8 @@ void sd_card_task(void *pvParameter) {
         
         // Escreve os dados no arquivo
         //fwrite(buffer, 1, bytes_read, file);
-        size_t bytes_written = fwrite(buffer, 1, bytes_read, file);
+        //size_t bytes_written = fwrite(buffer, 1, bytes_read, file);
+        size_t bytes_written = fwrite(data_buffer, 1, bytes_read, file);
         if (bytes_written != bytes_read) {
             ESP_LOGE(TAG, "Failed to write audio data to file.");
             break;
