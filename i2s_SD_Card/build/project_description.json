@@ -1,7 +1,7 @@
 {
     "version":            "1",
     "project_name":       "i2s_SD_Card",
-    "project_version":    "f68e4fd-dirty",
+    "project_version":    "cbf28045-dirty",
     "project_path":       "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card",
     "idf_path":           "C:/Users/Dell/esp/v4.4.7/esp-idf",
     "build_dir":          "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card/build",
@@ -848,7 +848,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card/build/esp-idf/main/libmain.a",
-            "sources": [ "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card/main/main.c" ],
+            "sources": [ "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card/main/i2s.c", "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card/main/sd_card.c", "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_SD_Card/main/main.c" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {
