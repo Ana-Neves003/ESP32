@@ -1,7 +1,7 @@
 {
     "version":            "1",
     "project_name":       "i2s_acquisition",
-    "project_version":    "bf80d1ac-dirty",
+    "project_version":    "202c463e-dirty",
     "project_path":       "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition",
     "idf_path":           "C:/Users/Dell/esp/v4.4.7/esp-idf",
     "build_dir":          "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition/build",
@@ -848,7 +848,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition/build/esp-idf/main/libmain.a",
-            "sources": [ "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition/main/main.c" ],
+            "sources": [ "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition/main/sd_driver.c", "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition/main/main.c" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {
