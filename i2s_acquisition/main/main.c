@@ -2,9 +2,6 @@
 
 static const char *TAG = "i2s_sd_card_test";
 
-TickType_t recording_start_time;
-TickType_t recording_duration_ticks;
-
 void app_main(void) {
     // Inicializa o cartão SD
     init_sd_card();
@@ -17,7 +14,7 @@ void app_main(void) {
     recording_duration_ticks = pdMS_TO_TICKS(RECORDING_TIME_SECONDS * 1000);
 
     // Cria a tarefa para capturar áudio
-    xTaskCreatePinnedToCore(i2s_task, "i2s_task", 8192, NULL, 5, NULL, PRO_CPU_NUM);
+    xTaskCreatePinnedToCore(i2s_task, "i2s_task", 8192, NULL, 5, &vTask1Handle, PRO_CPU_NUM);
 }
 
 void i2s_task(void *pvParameter) {
@@ -43,6 +40,7 @@ void i2s_task(void *pvParameter) {
     }
 }
 
+
 void i2s_setup(void) {
     i2s_config_t i2s_config = {
         .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM,
@@ -65,4 +63,9 @@ void i2s_setup(void) {
 
     i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
     i2s_set_pin(I2S_NUM, &pin_config);
+    // configure i2s
+    //ESP_ERROR_CHECK(i2s_driver_install(I2S_NUM, &i2s_config, 32, &xQueueData));
+    //ESP_ERROR_CHECK(i2s_set_pin(I2S_NUM, &pin_config));
+    //ESP_ERROR_CHECK(i2s_stop(I2S_NUM));
 }
+

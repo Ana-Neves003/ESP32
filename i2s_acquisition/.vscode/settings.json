@@ -16,6 +16,7 @@
     "idf.toolsPathWin": "C:\\Users\\Dell\\.espressif",
     "idf.flashType": "UART",
     "files.associations": {
-        "cstdio": "c"
+        "cstdio": "c",
+        "esp_log.h": "c"
     }
 }
