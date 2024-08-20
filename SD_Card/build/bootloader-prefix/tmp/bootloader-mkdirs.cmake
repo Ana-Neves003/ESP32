@@ -5,15 +5,15 @@ cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
   "C:/Users/Dell/esp/v4.4.7/esp-idf/components/bootloader/subproject"
-  "C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/bootloader"
-  "C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/bootloader-prefix"
-  "C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/bootloader-prefix/tmp"
-  "C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/bootloader-prefix/src/bootloader-stamp"
-  "C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/bootloader-prefix/src"
-  "C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/bootloader-prefix/src/bootloader-stamp"
+  "C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/bootloader"
+  "C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/bootloader-prefix"
+  "C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/bootloader-prefix/tmp"
+  "C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/bootloader-prefix/src/bootloader-stamp"
+  "C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/bootloader-prefix/src"
+  "C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/bootloader-prefix/src/bootloader-stamp"
 )
 
 set(configSubDirs )
 foreach(subDir IN LISTS configSubDirs)
-    file(MAKE_DIRECTORY "C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
+    file(MAKE_DIRECTORY "C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/bootloader-prefix/src/bootloader-stamp/${subDir}")
 endforeach()

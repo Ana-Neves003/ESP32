@@ -1,7 +1,7 @@
 {
     "version":            "1",
     "project_name":       "i2s_acquisition",
-    "project_version":    "56b53114-dirty",
+    "project_version":    "ff3448b4-dirty",
     "project_path":       "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition",
     "idf_path":           "C:/Users/Dell/esp/v4.4.7/esp-idf",
     "build_dir":          "C:/Users/Dell/Codigos/GITHUB/ESP32/i2s_acquisition/build",

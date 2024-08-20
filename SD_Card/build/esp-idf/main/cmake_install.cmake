@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/main
+# Install script for directory: C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

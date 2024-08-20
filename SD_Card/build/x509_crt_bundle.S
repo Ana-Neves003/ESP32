@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/Dell/Codigos/FreeRTOS/ESP32/SD_Card/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from C:/Users/Dell/Codigos/GITHUB/ESP32/SD_Card/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded
