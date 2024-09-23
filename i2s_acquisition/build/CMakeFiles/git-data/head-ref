@@ -1,1 +1,26 @@
-ff3448b44da3c33973ab707dec6668ca68bf8040
+0000000000000000000000000000000000000000 56e6a386245153504a4ed6cbe873e3eef97e71f8 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716507042 -0300	clone: from https://github.com/Ana-Neves003/ESP32.git
+56e6a386245153504a4ed6cbe873e3eef97e71f8 d3f513354eb46894f2834a848370c415f96b9908 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716564786 -0300	commit: Atualizações i2s e primeira versão do i2s_button
+d3f513354eb46894f2834a848370c415f96b9908 249d4303064184c33941fe92c84c12ea25d8e366 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716575104 -0300	commit: atualização do i2s
+249d4303064184c33941fe92c84c12ea25d8e366 fb4fed9e8a856c66f0131a89b61cd5d3ce56e57c Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716579656 -0300	commit: i2s_SD_Card atualizado com problema no armazenamento dos dados
+fb4fed9e8a856c66f0131a89b61cd5d3ce56e57c f68e4fd04ce0f1353178db1263af7d8995ac3206 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716583985 -0300	commit: Código usando duas tasks para exemplo
+f68e4fd04ce0f1353178db1263af7d8995ac3206 8f85e09b690adf3a00bc79728278d667299ca7d2 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716671649 -0300	commit: Atualizações no código do i2s_SD_Card e códigos exemplos usandovTask no FreeRTOS
+8f85e09b690adf3a00bc79728278d667299ca7d2 76cac7e64a49370a7b7e54c9cc20bb056254e875 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716674394 -0300	commit: Atualizando os códigos vTask
+76cac7e64a49370a7b7e54c9cc20bb056254e875 9fae29a7f2779eac9e42436d453f1cb2add92cc9 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716679010 -0300	commit: Código para mostrar como passa o parametro nas Tasks
+9fae29a7f2779eac9e42436d453f1cb2add92cc9 70755dca1e5011e150a782ba59497aa31b06d5dc Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716682001 -0300	commit: Código que define o núcleo para execução da Task
+70755dca1e5011e150a782ba59497aa31b06d5dc 9caeadf46fae6dc6119a8c7ffa64fb6473e70d63 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716688507 -0300	commit: Verificando o uso da Stack
+9caeadf46fae6dc6119a8c7ffa64fb6473e70d63 71a987c570d4a9ad81857399c4b83afac904c40a Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716747481 -0300	commit: Código que trabalha com filas para comunicação entre Tasks
+71a987c570d4a9ad81857399c4b83afac904c40a 563de16d045f3ce95634cf672c35d64a6e071b17 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716835296 -0300	commit: Trabalhando com filas para comunicação entre interrupção e task
+563de16d045f3ce95634cf672c35d64a6e071b17 c7d10c0345717b5751358a018491ea17b8fe176d Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716838275 -0300	commit: Semáforo Binário no FreeRTOS
+c7d10c0345717b5751358a018491ea17b8fe176d e0cbf555de3522c54f073a60d12fd62c4652aa67 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1716842953 -0300	commit: Semáforos binários em ISR
+e0cbf555de3522c54f073a60d12fd62c4652aa67 d00f06d3bdfad5ebd9a86a3a1d94f37eb87627d8 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717001446 -0300	commit: Código com semáforo contador
+d00f06d3bdfad5ebd9a86a3a1d94f37eb87627d8 cf4fa4c88e990c9439cd2ea8c5e7e43cd4ea7952 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717005188 -0300	commit: Codigo usando semáforo mutex
+cf4fa4c88e990c9439cd2ea8c5e7e43cd4ea7952 cbf28045a2648a547edd46820cfd520aa66808c7 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717102594 -0300	commit: Código utilizando software timers no FreeRTOS
+cbf28045a2648a547edd46820cfd520aa66808c7 f53dcced6e91d33924cb9bf9f68d54d8836065ff Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717117219 -0300	commit: Atualização do código
+f53dcced6e91d33924cb9bf9f68d54d8836065ff fd0cc049aa2e0fdec1afc98603cf4daf7370acb8 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717133190 -0300	commit: Atualizações no código
+fd0cc049aa2e0fdec1afc98603cf4daf7370acb8 f21fb36d65fc0ada09180a285e4d68e4b4450104 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717176502 -0300	commit: Atualizações
+f21fb36d65fc0ada09180a285e4d68e4b4450104 2c4353846871d3e5912ff82bd9b4b3b44b8147fe Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717177583 -0300	commit: Atualizações
+2c4353846871d3e5912ff82bd9b4b3b44b8147fe bf80d1ac01d1b8a7f437c72cf99358564dee46e2 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717180747 -0300	commit: atualizações
+bf80d1ac01d1b8a7f437c72cf99358564dee46e2 202c463e8d118c04eb5a91ae758ee6fe22c75602 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717288998 -0300	commit: Versão do código que está gravando o aúdio corretamente mas ainda é a primeira versão
+202c463e8d118c04eb5a91ae758ee6fe22c75602 56b53114e8710955672b21842a867b740c6feba2 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717291739 -0300	commit: Versão 1.0
+56b53114e8710955672b21842a867b740c6feba2 ff3448b44da3c33973ab707dec6668ca68bf8040 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1717440341 -0300	commit: Tentei adicionar a fila para recerber os dados mas não deu certo então voltei para Versão 1.0
+ff3448b44da3c33973ab707dec6668ca68bf8040 5057cda09ccf1b0da1b3409f7c1d048305e36576 Ana-Beatriz-Marinho <anabibimn@hotmail.com> 1724164224 -0300	commit: Atualizações no i2s_acquisition
