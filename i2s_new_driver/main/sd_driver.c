@@ -51,10 +51,11 @@ void sdcard_init(FILE** file)
     }
 
     ESP_LOGI(TAG, "SD card montado com sucesso.");
-    *file = fopen(MOUNT_POINT "/audio.raw", "wb");
-    if (!*file) {
-        ESP_LOGE(TAG, "Erro ao abrir arquivo para gravacao.");
-    } else {
-        ESP_LOGI(TAG, "Arquivo aberto com sucesso.");
+    *file = fopen(MOUNT_POINT "/audio.raw", "ab+");
+        if (*file) {
+            ESP_LOGI(TAG, "Arquivo aberto no modo append.");
+        } else {
+            ESP_LOGE(TAG, "Erro ao abrir/criar arquivo para gravação.");
     }
+
 }
