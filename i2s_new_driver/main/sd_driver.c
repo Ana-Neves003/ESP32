@@ -13,9 +13,19 @@
 #define PIN_NUM_CS   22
 
 static const char *TAG = "SD_DRIVER";
+static bool sd_initialized = false;
 
-void sdcard_init(FILE** file)
-{
+
+bool sd_is_mounted(){
+    return sd_initialized;
+}
+
+void sd_mount() {
+    if (sd_initialized) {
+        ESP_LOGW(TAG, "Cartão SD já montado.");
+        return;
+    }
+
     ESP_LOGI(TAG, "Montando o sistema de arquivos SD...");
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
@@ -31,7 +41,12 @@ void sdcard_init(FILE** file)
         .quadhd_io_num = -1,
         .max_transfer_sz = 4000,
     };
-    ESP_ERROR_CHECK(spi_bus_initialize(host.slot, &bus_cfg, SPI_DMA_CHAN));
+
+    esp_err_t ret = spi_bus_initialize(host.slot, &bus_cfg, SPI_DMA_CHAN);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(TAG, "Falha ao inicializar o barramento SPI (%s)", esp_err_to_name(ret));
+        return;
+    }
 
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = PIN_NUM_CS;
@@ -43,19 +58,29 @@ void sdcard_init(FILE** file)
     };
 
     sdmmc_card_t* card;
-    esp_err_t ret = esp_vfs_fat_sdspi_mount(MOUNT_POINT, &host, &slot_config, &mount_config, &card);
+    ret = esp_vfs_fat_sdspi_mount(MOUNT_POINT, &host, &slot_config, &mount_config, &card);
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Falha ao montar o SD card (%s)", esp_err_to_name(ret));
         return;
     }
 
+    sd_initialized = true;
     ESP_LOGI(TAG, "SD card montado com sucesso.");
-    *file = fopen(MOUNT_POINT "/audio.raw", "ab+");
-        if (*file) {
-            ESP_LOGI(TAG, "Arquivo aberto no modo append.");
-        } else {
-            ESP_LOGE(TAG, "Erro ao abrir/criar arquivo para gravação.");
+}
+
+FILE* sd_open_file(void) {
+    if (!sd_initialized) {
+        ESP_LOGW(TAG, "Cartão SD não está montado.");
+        return NULL;
     }
 
+    FILE* file = fopen(MOUNT_POINT "/audio.raw", "ab+");
+    if (file) {
+        ESP_LOGI(TAG, "Arquivo aberto no modo append.");
+    } else {
+        ESP_LOGE(TAG, "Erro ao abrir/criar arquivo para gravação.");
+    }
+    return file;
 }
+
