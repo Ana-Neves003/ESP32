@@ -26,9 +26,9 @@ void app_main(void) {
     
     //ESP_ERROR_CHECK(i2s_set_sample_rates(I2S_NUM, 44100));  
 
-    ESP_LOGI(TAG, "Mudando para modo ultrassônico...");
-    vTaskDelay(100);
-    ESP_ERROR_CHECK(i2s_set_sample_rates(I2S_NUM, 4100));
+    //ESP_LOGI(TAG, "Mudando para modo ultrassônico...");
+    //vTaskDelay(100);
+    //ESP_ERROR_CHECK(i2s_set_sample_rates(I2S_NUM, 4100));
 
     // Define o tempo de início da gravação
     recording_start_time = xTaskGetTickCount();
@@ -68,11 +68,11 @@ void i2s_task(void *pvParameter ) {
 void i2s_setup(i2s_config_t *i2s_config, i2s_pin_config_t *pin_config) {
 
      *i2s_config = (i2s_config_t) {
-        //.mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM,
-        .mode = I2S_MODE_MASTER | I2S_MODE_RX,
+        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_PDM,
+        //.mode = I2S_MODE_MASTER | I2S_MODE_RX,
         .sample_rate = 8000,
-        //.bits_per_sample = BIT_DEPTH_STD,
-        .bits_per_sample = BIT_DEPTH_ULT,
+        .bits_per_sample = BIT_DEPTH_STD,
+        //.bits_per_sample = BIT_DEPTH_ULT,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
         .communication_format = I2S_COMM_FORMAT_I2S_MSB,
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
@@ -82,10 +82,10 @@ void i2s_setup(i2s_config_t *i2s_config, i2s_pin_config_t *pin_config) {
     };
 
     *pin_config = (i2s_pin_config_t) {
-        //.bck_io_num = I2S_PIN_NO_CHANGE,
-        //.ws_io_num = MIC_CLOCK_PIN,
-        .bck_io_num = MIC_CLOCK_PIN,
-        .ws_io_num = I2S_PIN_NO_CHANGE,
+        .bck_io_num = I2S_PIN_NO_CHANGE,
+        .ws_io_num = MIC_CLOCK_PIN,
+        //.bck_io_num = MIC_CLOCK_PIN,
+        //.ws_io_num = I2S_PIN_NO_CHANGE,
         .data_out_num = I2S_PIN_NO_CHANGE,
         .data_in_num = MIC_DATA_PIN
     };
