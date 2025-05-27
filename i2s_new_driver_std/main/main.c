@@ -13,6 +13,9 @@ static const char *TAG = "I2S_STD";
 
 i2s_chan_handle_t rx_handle;
 uint8_t dataBuffer[DATA_BUFFER_SIZE];
+QueueHandle_t xQueue;
+
+
 
 void i2s_init(bool modo_padrao) {
     i2s_chan_config_t rx_channel_config = {
@@ -54,31 +57,64 @@ void i2s_init(bool modo_padrao) {
 
 void i2s_read_task(void *pvParameters) {
     size_t bytes_read;
+    TickType_t start_time = xTaskGetTickCount();
 
-    while (1) {
+
+    while ((xTaskGetTickCount() - start_time) < pdMS_TO_TICKS(ACQUISITION_TIME_MS)) {
         ESP_ERROR_CHECK(i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY));
 
-        printf("%02x %02x %02x %02x %02x %02x %02x\n",
-               dataBuffer[0], dataBuffer[1], dataBuffer[2],
-               dataBuffer[3], dataBuffer[4], dataBuffer[5],
-               dataBuffer[6]);
 
-        if (audio_file) {
-            fwrite(dataBuffer, 1, bytes_read, audio_file);
-            fflush(audio_file);
-            fsync(fileno(audio_file));
+        //printf("%02x %02x %02x %02x %02x %02x %02x\n",
+        //       dataBuffer[0], dataBuffer[1], dataBuffer[2],
+        //       dataBuffer[3], dataBuffer[4], dataBuffer[5],
+        //       dataBuffer[6]);
+       xQueueSend(xQueue, dataBuffer, portMAX_DELAY);
+    }
+
+    stop_i2s();
+    ESP_LOGI(TAG, "Aquisição encerrada após 10 segundos");
+    vTaskDelete(NULL);  
+}
+
+void sd_write_task(void *pvParameters) {
+    static uint8_t rxBuf[DATA_BUFFER_SIZE];
+    while (1) {
+        if (xQueueReceive(xQueue, rxBuf, portMAX_DELAY) == pdTRUE) {
+            if (audio_file) {
+                fwrite(rxBuf, 1, DATA_BUFFER_SIZE, audio_file);
+                fflush(audio_file);
+                fsync(fileno(audio_file));
+            }
         }
     }
 }
 
+void stop_i2s() {
+    i2s_channel_disable(rx_handle);
+    i2s_del_channel(rx_handle);
+}
+
 void app_main(void) {
-    vTaskDelay(pdMS_TO_TICKS(500));
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    xQueue = xQueueCreate(32, DATA_BUFFER_SIZE);
+
+    if (xQueue == NULL) {
+        ESP_LOGE(TAG, "Falha ao criar xQueue");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Criado a Fila");
 
     sdcard_init();
     vTaskDelay(pdMS_TO_TICKS(500));
 
+    ESP_LOGI(TAG, "SD Card OK!");
+
     i2s_init(true);
     vTaskDelay(pdMS_TO_TICKS(500));
+    ESP_LOGI(TAG, "Standard Mode");
 
     i2s_channel_disable(rx_handle);
     i2s_del_channel(rx_handle);
@@ -86,6 +122,8 @@ void app_main(void) {
 
     i2s_init(false);
     vTaskDelay(pdMS_TO_TICKS(500));
+    ESP_LOGI(TAG, "Ultrasonic Mode");
 
-    xTaskCreate(i2s_read_task, "i2s_read_task", 4096, NULL, 5, NULL);
+    xTaskCreate(i2s_read_task, "i2s_read_task", 4096, NULL, 9, NULL); 
+    xTaskCreate(sd_write_task, "sd_write_task", 8192, NULL, 5, NULL);
 }
