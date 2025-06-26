@@ -136,14 +136,30 @@ void app_main(void) {
 
     ESP_LOGI(TAG, "Inicializando I2S...");
     i2s_init();
-    i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    i2s_channel_disable(rx_handle);
-    i2s_del_channel(rx_handle);
 
+    ESP_LOGI(TAG, "Leitura do I2S...");
+    i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    
+    ESP_LOGI(TAG, "Escrita do SD...");
+    fwrite(dataBuffer, 1, bytes_read, audio_file); 
+    fflush(audio_file);     
+    fsync(fileno(audio_file));  
+
+
+    ESP_LOGI(TAG, "2 Leitura do I2S...");
+    i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    ESP_LOGI(TAG, "Escrita do SD...");
     fwrite(dataBuffer, 1, bytes_read, audio_file); 
     fflush(audio_file);     
     fsync(fileno(audio_file));  
     fclose(audio_file);
+
+    ESP_LOGI(TAG, "Desabilita canal");
+    i2s_channel_disable(rx_handle);
+    ESP_LOGI(TAG, "Deleta canal");
+    i2s_del_channel(rx_handle);
 
 }
