@@ -13,9 +13,10 @@
 #include "nvs_flash.h"
 #include "lwip/sockets.h"
 
-#define SAMPLE_RATE     44100
-#define DMA_BUF_COUNT        16
-#define DMA_BUF_LEN_SMPL     511
+#define SAMPLE_RATE_STD  44100
+#define SAMPLE_RATE_ULT  78125   
+#define DMA_BUF_COUNT    16
+#define DMA_BUF_LEN_SMPL 511
 
 #define BIT_DEPTH_STD        I2S_DATA_BIT_WIDTH_16BIT
 #define BIT_DEPTH_ULT        I2S_DATA_BIT_WIDTH_32BIT
@@ -47,10 +48,10 @@ void wifi_init_sta(void)
 
     wifi_config_t wifi_config = {
         .sta = {
-            //.ssid = "VIVOFIBRA-4870-EXT",
-            .ssid = "LASEM",
-            //.password = "CC99735551",
-            .password = "besourosuco",
+            .ssid = "VIVOFIBRA-4870-EXT",
+            //.ssid = "LASEM",
+            .password = "CC99735551",
+            //.password = "besourosuco",
         },
     };
 
@@ -60,7 +61,7 @@ void wifi_init_sta(void)
     esp_wifi_connect();
 }
 
-void i2s_init_std() {
+void i2s_init_std(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH, bool modo_ult) {
 
     ESP_LOGI(TAG, "Initializing I2S STD"); 
 
@@ -81,18 +82,18 @@ void i2s_init_std() {
             .mclk_multiple = I2S_MCLK_MULTIPLE_256
         },
         .slot_cfg = {
-            .data_bit_width =  BIT_DEPTH_STD,
-            .slot_bit_width =  BIT_DEPTH_STD,
+            .data_bit_width =  BIT_DEPTH,
+            .slot_bit_width =  BIT_DEPTH,
                 .slot_mode = I2S_SLOT_MODE_STEREO,
                 .slot_mask = I2S_STD_SLOT_BOTH,
-                .ws_width = BIT_DEPTH_STD,
+                .ws_width = BIT_DEPTH,
                 .ws_pol = false,
                 .bit_shift = true
             },
             .gpio_cfg = {
                 .mclk = I2S_GPIO_UNUSED,
-                .bclk = MIC_CLOCK_PIN,
-                .ws   = I2S_GPIO_UNUSED,
+                .bclk = modo_ult ? MIC_CLOCK_PIN: I2S_GPIO_UNUSED,
+                .ws   = modo_ult ? I2S_GPIO_UNUSED: MIC_CLOCK_PIN,
                 .dout = I2S_GPIO_UNUSED,
                 .din  = MIC_DATA_PIN
             }
@@ -103,7 +104,7 @@ void i2s_init_std() {
     ESP_LOGI(TAG, "I2S inicializado!");
 }
 
-void i2s_init_pdm()
+void i2s_init_pdm(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH)
 {
     ESP_LOGI(TAG, "Inicializando I2S em modo PDM.");
 
@@ -120,7 +121,7 @@ void i2s_init_pdm()
     // Configuração do microfone em modo PDM RX
     i2s_pdm_rx_config_t pdm_rx_cfg = {
         .clk_cfg = I2S_PDM_RX_CLK_DEFAULT_CONFIG(SAMPLE_RATE),
-        .slot_cfg = I2S_PDM_RX_SLOT_DEFAULT_CONFIG(BIT_DEPTH_STD, I2S_SLOT_MODE_MONO),
+        .slot_cfg = I2S_PDM_RX_SLOT_DEFAULT_CONFIG(BIT_DEPTH, I2S_SLOT_MODE_MONO),
         .gpio_cfg = {
             .clk = MIC_CLOCK_PIN, 
             .din = MIC_DATA_PIN,
@@ -145,7 +146,8 @@ void app_main(void) {
     }
 
     // IP do computador e porta
-    const char* DEST_IP = "192.168.1.124";  
+    //const char* DEST_IP = "192.168.1.124";  
+    const char* DEST_IP = "192.168.15.183";  
     const int DEST_PORT = 12345;
 
     size_t bytes_read = 0;
@@ -175,12 +177,19 @@ void app_main(void) {
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(DEST_PORT);
     
-
+    // Inicializa em 44100 só pra ativar o microfone
     ESP_LOGI(TAG, "Inicializando I2S...");
-    i2s_init_std();
-    //i2s_init_pdm();
+    //i2s_init_pdm(SAMPLE_RATE_STD, BIT_DEPTH_STD);
+    i2s_init_std(SAMPLE_RATE_STD, BIT_DEPTH_STD, false);
     vTaskDelay(pdMS_TO_TICKS(500));
 
+    // Desliga e deleta o canal
+    i2s_channel_disable(rx_handle);
+    i2s_del_channel(rx_handle);
+
+    //Reconfigura para 78125 Hz
+    i2s_init_std(SAMPLE_RATE_ULT, BIT_DEPTH_ULT, true);
+    vTaskDelay(pdMS_TO_TICKS(500));
 
     while (1) {
         esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
@@ -194,8 +203,8 @@ void app_main(void) {
             dataBuffer[3], dataBuffer[4], dataBuffer[5],
             dataBuffer[6]);
 
-            //sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-            int sent = sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            //int sent = sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             //ESP_LOGI(TAG, "UDP: Enviados %d bytes", sent);
 
         vTaskDelay(pdMS_TO_TICKS(100));  
