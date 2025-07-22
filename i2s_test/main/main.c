@@ -1,17 +1,19 @@
 #include <stdio.h>
-#include <unistd.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_vfs_fat.h"
-#include "driver/sdspi_host.h"
-#include "sdmmc_cmd.h"
 #include "driver/i2s_std.h"
+#include "driver/i2s_pdm.h"
 
-#define SAMPLE_RATE_STD     44100
-#define SAMPLE_RATE_ULT      78125
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "nvs_flash.h"
+#include "lwip/sockets.h"
+
+#define SAMPLE_RATE     44100
 #define DMA_BUF_COUNT        16
 #define DMA_BUF_LEN_SMPL     511
 
@@ -19,13 +21,6 @@
 #define BIT_DEPTH_ULT        I2S_DATA_BIT_WIDTH_32BIT
 #define DATA_BUFFER_SIZE     (DMA_BUF_LEN_SMPL *2* BIT_DEPTH_ULT / 8)
 
-#define MOUNT_POINT      "/sdcard"
-#define SPI_DMA_CHAN     1
-
-#define PIN_NUM_MISO     19
-#define PIN_NUM_MOSI     23
-#define PIN_NUM_CLK      18
-#define PIN_NUM_CS       22
 
 // Pinos do microfone PDM
 #define MIC_CLOCK_PIN     GPIO_NUM_21
@@ -33,61 +28,42 @@
 
 #define I2S_PORT_NUM    I2S_NUM_0
 
-static const char *TAG = "I2S_SD";
+static const char *TAG = "I2S_TEST";
 
 
-FILE* audio_file = NULL;
 i2s_chan_handle_t rx_handle;
 uint8_t dataBuffer[DATA_BUFFER_SIZE];
 QueueHandle_t xQueue;
 
 
-// Inicialização do cartão SD 
-void sdcard_init() {
-    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    host.slot = SPI2_HOST;
-    host.flags = SDMMC_HOST_FLAG_SPI;
-    //host.max_freq_khz = SDMMC_FREQ_DEFAULT;
-    host.max_freq_khz = 30000; // O cartão opera com segurança até 30 MHz
+void wifi_init_sta(void)
+{
+    esp_netif_init();
+    esp_event_loop_create_default();
+    esp_netif_create_default_wifi_sta();
 
-    spi_bus_config_t bus_cfg = {
-        .mosi_io_num = PIN_NUM_MOSI,
-        .miso_io_num = PIN_NUM_MISO,
-        .sclk_io_num = PIN_NUM_CLK,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 4000,
-    };
-    ESP_ERROR_CHECK(spi_bus_initialize(host.slot, &bus_cfg, SPI_DMA_CHAN));
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_wifi_init(&cfg);
 
-    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
-    slot_config.gpio_cs = PIN_NUM_CS;
-    slot_config.host_id = host.slot;
-
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
-        .max_files = 5
+    wifi_config_t wifi_config = {
+        .sta = {
+            //.ssid = "VIVOFIBRA-4870-EXT",
+            .ssid = "LASEM",
+            //.password = "CC99735551",
+            .password = "besourosuco",
+        },
     };
 
-    sdmmc_card_t* card;
-    esp_err_t ret = esp_vfs_fat_sdspi_mount(MOUNT_POINT, &host, &slot_config, &mount_config, &card);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Falha ao montar o SD card (%s)", esp_err_to_name(ret));
-        return;
-    }
-
-    // Mostra a velocidade máxima suportada pelo cartão SD
-    //sdmmc_card_print_info(stdout, card);
-    //ESP_LOGI(TAG, "Velocidade máxima declarada pelo cartão (kbps): %d", card->csd.tr_speed);
-
-    audio_file = fopen(MOUNT_POINT "/audio.raw", "wb");
-    if (!audio_file) {
-        ESP_LOGE(TAG, "Erro ao abrir arquivo para gravação.");
-        return;
-    }
+    esp_wifi_set_mode(WIFI_MODE_STA);
+    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    esp_wifi_start();
+    esp_wifi_connect();
 }
 
-void i2s_init() {
+void i2s_init_std() {
+
+    ESP_LOGI(TAG, "Initializing I2S STD"); 
+
     i2s_chan_config_t rx_channel_config = {
         .id = I2S_PORT_NUM,
         .role = I2S_ROLE_MASTER,
@@ -96,70 +72,150 @@ void i2s_init() {
         .auto_clear = true
     };
 
+    ESP_ERROR_CHECK(i2s_new_channel(&rx_channel_config, NULL, &rx_handle));
+
     i2s_std_config_t std_cfg = {
         .clk_cfg = {
-            .sample_rate_hz = SAMPLE_RATE_STD,
+            .sample_rate_hz = SAMPLE_RATE,
             .clk_src = I2S_CLK_SRC_APLL,
             .mclk_multiple = I2S_MCLK_MULTIPLE_256
         },
         .slot_cfg = {
-            .data_bit_width = BIT_DEPTH_STD,
-            .slot_bit_width = BIT_DEPTH_STD,
-            .slot_mode = I2S_SLOT_MODE_STEREO,
-            .slot_mask = I2S_STD_SLOT_BOTH,
-            .ws_width = BIT_DEPTH_STD,
-            .ws_pol = false,
-            .bit_shift = true
-        },
-        .gpio_cfg = {
-            .mclk = I2S_GPIO_UNUSED,
-            .bclk = I2S_GPIO_UNUSED,
-            .ws   = MIC_CLOCK_PIN,
-            .dout = I2S_GPIO_UNUSED,
-            .din  = MIC_DATA_PIN
-        }
+            .data_bit_width =  BIT_DEPTH_STD,
+            .slot_bit_width =  BIT_DEPTH_STD,
+                .slot_mode = I2S_SLOT_MODE_STEREO,
+                .slot_mask = I2S_STD_SLOT_BOTH,
+                .ws_width = BIT_DEPTH_STD,
+                .ws_pol = false,
+                .bit_shift = true
+            },
+            .gpio_cfg = {
+                .mclk = I2S_GPIO_UNUSED,
+                .bclk = MIC_CLOCK_PIN,
+                .ws   = I2S_GPIO_UNUSED,
+                .dout = I2S_GPIO_UNUSED,
+                .din  = MIC_DATA_PIN
+            }
     };
 
-    ESP_ERROR_CHECK(i2s_new_channel(&rx_channel_config, NULL, &rx_handle));
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle, &std_cfg));
     ESP_ERROR_CHECK(i2s_channel_enable(rx_handle));
+    ESP_LOGI(TAG, "I2S inicializado!");
+}
+
+void i2s_init_pdm()
+{
+    ESP_LOGI(TAG, "Inicializando I2S em modo PDM.");
+
+    // Configuração do canal 
+    i2s_chan_config_t chan_cfg = {
+        .id = I2S_NUM_0, // escolha do canal i2s 0 (no esp32 apenas esse canal suporta o modo pdm)
+        .role = I2S_ROLE_MASTER, // o esp32 atua como o controlador
+        .dma_desc_num = DMA_BUF_COUNT, // quantidade de buffers do DMA
+        .dma_frame_num = DMA_BUF_LEN_SMPL, // tamanho dos buffers do DMA
+        .auto_clear = false, // limpar automaticamente o buffer TX (desnecessario)
+    };
+    ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg,NULL, &rx_handle));                         // Create a new I2S channel  
+
+    // Configuração do microfone em modo PDM RX
+    i2s_pdm_rx_config_t pdm_rx_cfg = {
+        .clk_cfg = I2S_PDM_RX_CLK_DEFAULT_CONFIG(SAMPLE_RATE),
+        .slot_cfg = I2S_PDM_RX_SLOT_DEFAULT_CONFIG(BIT_DEPTH_STD, I2S_SLOT_MODE_MONO),
+        .gpio_cfg = {
+            .clk = MIC_CLOCK_PIN, 
+            .din = MIC_DATA_PIN,
+            .invert_flags = { // nao inverter bits
+                .clk_inv = false,
+            },
+        },
+    };
+
+    ESP_ERROR_CHECK(i2s_channel_init_pdm_rx_mode(rx_handle, &pdm_rx_cfg));    // Initialize I2S channel in standard mode
+    ESP_ERROR_CHECK(i2s_channel_enable(rx_handle));                           // Enable I2S channel
+    ESP_LOGI(TAG, "I2S inicializado!");
 }
 
 void app_main(void) {
+    
+    // Inicializa NVS (necessário para Wi-Fi funcionar)
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ESP_ERROR_CHECK(nvs_flash_init());
+    }
+
+    // IP do computador e porta
+    const char* DEST_IP = "192.168.1.124";  
+    const int DEST_PORT = 12345;
+
     size_t bytes_read = 0;
 
-    sdcard_init();
-    if (!audio_file) {
-        ESP_LOGE(TAG, "Arquivo não foi criado. Encerrando.");
+    // Inicializa Wi-Fi
+    ESP_LOGI(TAG, "Iniciando conexão Wi-Fi...");
+    wifi_init_sta();
+    vTaskDelay(pdMS_TO_TICKS(3000));  // Aguarda conexão
+
+    
+    // Mostra IP do ESP32
+    esp_netif_ip_info_t ip_info;
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_netif_get_ip_info(netif, &ip_info);
+    ESP_LOGI(TAG, "IP do ESP32: " IPSTR, IP2STR(&ip_info.ip));
+    
+    // Cria socket UDP
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "Não foi possível criar o socket");
         return;
     }
 
-    ESP_LOGI(TAG, "Inicializando I2S...");
-    i2s_init();
-
-    ESP_LOGI(TAG, "Leitura do I2S...");
-    i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    // Configura destino
+    struct sockaddr_in dest_addr;
+    dest_addr.sin_addr.s_addr = inet_addr(DEST_IP);
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(DEST_PORT);
     
-    ESP_LOGI(TAG, "Escrita do SD...");
-    fwrite(dataBuffer, 1, bytes_read, audio_file); 
-    fflush(audio_file);     
-    fsync(fileno(audio_file));  
 
-
-    ESP_LOGI(TAG, "2 Leitura do I2S...");
-    i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+    ESP_LOGI(TAG, "Inicializando I2S...");
+    i2s_init_std();
+    //i2s_init_pdm();
     vTaskDelay(pdMS_TO_TICKS(500));
 
-    ESP_LOGI(TAG, "Escrita do SD...");
-    fwrite(dataBuffer, 1, bytes_read, audio_file); 
-    fflush(audio_file);     
-    fsync(fileno(audio_file));  
-    fclose(audio_file);
 
-    ESP_LOGI(TAG, "Desabilita canal");
-    i2s_channel_disable(rx_handle);
-    ESP_LOGI(TAG, "Deleta canal");
-    i2s_del_channel(rx_handle);
+    while (1) {
+        esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
+            continue;
+        }
+
+        printf("%02x %02x %02x %02x %02x %02x %02x\n",
+            dataBuffer[0], dataBuffer[1], dataBuffer[2],
+            dataBuffer[3], dataBuffer[4], dataBuffer[5],
+            dataBuffer[6]);
+
+            //sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            int sent = sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+            //ESP_LOGI(TAG, "UDP: Enviados %d bytes", sent);
+
+        vTaskDelay(pdMS_TO_TICKS(100));  
+    }
+
+    /*
+    esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
+        }
+
+        printf("%02x %02x %02x %02x %02x %02x %02x\n",
+            dataBuffer[0], dataBuffer[1], dataBuffer[2],
+            dataBuffer[3], dataBuffer[4], dataBuffer[5],
+            dataBuffer[6]);
+
+        //sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+        */
+
 
 }
