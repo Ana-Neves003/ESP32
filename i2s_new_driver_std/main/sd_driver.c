@@ -13,7 +13,8 @@ void sdcard_init(void) {
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = SPI2_HOST;
     host.flags = SDMMC_HOST_FLAG_SPI;
-    host.max_freq_khz = SDMMC_FREQ_DEFAULT;
+    //host.max_freq_khz = SDMMC_FREQ_DEFAULT;
+    host.max_freq_khz = 30000; // O cartão opera com segurança até 30 MHz
 
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = PIN_NUM_MOSI,
@@ -40,6 +41,10 @@ void sdcard_init(void) {
         ESP_LOGE(TAG, "Falha ao montar o SD card (%s)", esp_err_to_name(ret));
         return;
     }
+
+    // Mostra a velocidade máxima suportada pelo cartão SD
+    //sdmmc_card_print_info(stdout, card);
+    //ESP_LOGI(TAG, "Velocidade máxima declarada pelo cartão (kbps): %d", card->csd.tr_speed);
 
     audio_file = fopen(MOUNT_POINT "/audio.raw", "wb");
     if (!audio_file) {

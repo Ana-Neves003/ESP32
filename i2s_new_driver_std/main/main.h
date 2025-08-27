@@ -27,7 +27,10 @@
 
 #define DATA_BUFFER_SIZE     (DMA_BUF_LEN_SMPL *2* BIT_DEPTH_ULT / 8)
 
-#define ACQUISITION_TIME_MS 10000  
+#define ACQUISITION_TIME_MS 5000  
+#define NUM_MEDIDAS_I2S 1000
+#define NUM_MEDIDAS_SD 10
+#define FSYNC_CADA_N_BLOCOS 8  
 
 
 // Prototótipos

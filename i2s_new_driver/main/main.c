@@ -56,7 +56,7 @@ void task_gravar_audio(void *pvParameters) {
                dataBuffer[0], dataBuffer[1], dataBuffer[2],
                dataBuffer[3], dataBuffer[4], dataBuffer[5],
                dataBuffer[6]);
-
+        /*    
         xSemaphoreTake(xFileMutex, portMAX_DELAY);
         if (audio_file != NULL) {
             fwrite(dataBuffer, 1, bytes_read, audio_file);
@@ -64,6 +64,7 @@ void task_gravar_audio(void *pvParameters) {
             fsync(fileno(audio_file));
         }
         xSemaphoreGive(xFileMutex);
+        */
     }
 }
 
@@ -121,7 +122,7 @@ void app_main(void) {
     gpio_isr_handler_add(BUTTON_GPIO, gpio_isr_handler, NULL);
 
     xTaskCreate(task_gravar_audio, "task_gravar_audio", 4096, NULL, 8, &xHandleGravacao);
-    vTaskSuspend(xHandleGravacao); // inicia suspensa
+    //vTaskSuspend(xHandleGravacao); // inicia suspensa
 
-    xTaskCreate(task_gerenciar_gravacao, "task_gerenciar_gravacao", 4096, NULL, 10, NULL);
+   // xTaskCreate(task_gerenciar_gravacao, "task_gerenciar_gravacao", 4096, NULL, 10, NULL);
 }

@@ -4,14 +4,14 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "esp_vfs_fat.h"
 #include "driver/i2s_std.h"
 #include "driver/i2s_pdm.h"
 
+#include "nvs_flash.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
-#include "nvs_flash.h"
 #include "lwip/sockets.h"
+#include <netinet/in.h>
 
 #define SAMPLE_RATE_STD  44100
 #define SAMPLE_RATE_ULT  78125   
@@ -29,12 +29,15 @@
 
 #define I2S_PORT_NUM    I2S_NUM_0
 
-static const char *TAG = "I2S_TEST";
+static const char *TAG = "I2S_TCP";
 
 
 i2s_chan_handle_t rx_handle;
 uint8_t dataBuffer[DATA_BUFFER_SIZE];
 QueueHandle_t xQueue;
+
+const uint32_t aquisicao_segundos = 30;  
+const TickType_t duracao = pdMS_TO_TICKS(aquisicao_segundos * 1000);
 
 
 void wifi_init_sta(void)
@@ -50,8 +53,10 @@ void wifi_init_sta(void)
         .sta = {
             .ssid = "VIVOFIBRA-4870-EXT",
             //.ssid = "LASEM",
+            //.ssid = "Cerberus",
             .password = "CC99735551",
             //.password = "besourosuco",
+            //.password = "Lime@302",
         },
     };
 
@@ -63,7 +68,7 @@ void wifi_init_sta(void)
 
 void i2s_init_std(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH, bool modo_ult) {
 
-    ESP_LOGI(TAG, "Initializing I2S STD"); 
+    //ESP_LOGI(TAG, "Initializing I2S STD"); 
 
     i2s_chan_config_t rx_channel_config = {
         .id = I2S_PORT_NUM,
@@ -101,7 +106,7 @@ void i2s_init_std(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH, bool modo_ult
 
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(rx_handle, &std_cfg));
     ESP_ERROR_CHECK(i2s_channel_enable(rx_handle));
-    ESP_LOGI(TAG, "I2S inicializado!");
+    //ESP_LOGI(TAG, "I2S inicializado!");
 }
 
 void i2s_init_pdm(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH)
@@ -138,7 +143,7 @@ void i2s_init_pdm(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH)
 
 void app_main(void) {
     
-    // Inicializa NVS (necessário para Wi-Fi funcionar)
+    // Inicializa NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
@@ -148,83 +153,97 @@ void app_main(void) {
     // IP do computador e porta
     //const char* DEST_IP = "192.168.1.124";  
     const char* DEST_IP = "192.168.15.183";  
+    //const char* DEST_IP = "192.168.0.106";  
     const int DEST_PORT = 12345;
 
     size_t bytes_read = 0;
 
-    // Inicializa Wi-Fi
+    // Conecta Wi-Fi
     ESP_LOGI(TAG, "Iniciando conexão Wi-Fi...");
     wifi_init_sta();
-    vTaskDelay(pdMS_TO_TICKS(3000));  // Aguarda conexão
+    ESP_LOGI(TAG, "Aguardando conexão Wi-Fi...");
+    //vTaskDelay(pdMS_TO_TICKS(3000));  // Aguarda conexão
 
     
     // Mostra IP do ESP32
     esp_netif_ip_info_t ip_info;
-    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-    esp_netif_get_ip_info(netif, &ip_info);
-    ESP_LOGI(TAG, "IP do ESP32: " IPSTR, IP2STR(&ip_info.ip));
+    do {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+        esp_netif_get_ip_info(netif, &ip_info);
+    } while (ip_info.ip.addr == 0);
+
+    ESP_LOGI(TAG, "Conectado! IP do ESP32: " IPSTR, IP2STR(&ip_info.ip));
     
-    // Cria socket UDP
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    // Cria socket TCP
+    ESP_LOGI(TAG, "Criando socket TCP...");
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(TAG, "Não foi possível criar o socket");
         return;
     }
 
+    //Desativar Nagle para menor latência
+    int flag = 1;
+    setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+
     // Configura destino
     struct sockaddr_in dest_addr;
-    dest_addr.sin_addr.s_addr = inet_addr(DEST_IP);
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(DEST_PORT);
+    dest_addr.sin_addr.s_addr = inet_addr(DEST_IP);
+
+    ESP_LOGI(TAG, "Conectando ao servidor %s:%d...", DEST_IP, DEST_PORT);
+    if (connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) < 0) {
+        ESP_LOGE(TAG, "Falha na conexão com o servidor");
+        close(sock);
+        return;
+    }
+    ESP_LOGI(TAG, "Conectado!");
     
     // Inicializa em 44100 só pra ativar o microfone
-    ESP_LOGI(TAG, "Inicializando I2S...");
+    ESP_LOGI(TAG, "Inicializando I2S em 44.1 kHz...");
     //i2s_init_pdm(SAMPLE_RATE_STD, BIT_DEPTH_STD);
     i2s_init_std(SAMPLE_RATE_STD, BIT_DEPTH_STD, false);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     // Desliga e deleta o canal
     i2s_channel_disable(rx_handle);
     i2s_del_channel(rx_handle);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     //Reconfigura para 78125 Hz
+    ESP_LOGI(TAG, "Reconfigurando I2S para 78.125 Hz...");
     i2s_init_std(SAMPLE_RATE_ULT, BIT_DEPTH_ULT, true);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
-    while (1) {
+    TickType_t start = xTaskGetTickCount();
+
+    //while (1) {
+    while ((xTaskGetTickCount() - start) < duracao) {
         esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
         if (res != ESP_OK) {
             ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
             continue;
         }
 
+        // Envia dados via TCP
+            int sent = send(sock, dataBuffer, bytes_read, 0);
+            if (sent < 0) {
+                ESP_LOGE(TAG, "Falha no envio TCP");
+                break;
+            }
+
         printf("%02x %02x %02x %02x %02x %02x %02x\n",
             dataBuffer[0], dataBuffer[1], dataBuffer[2],
             dataBuffer[3], dataBuffer[4], dataBuffer[5],
             dataBuffer[6]);
 
-            sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-            //int sent = sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-            //ESP_LOGI(TAG, "UDP: Enviados %d bytes", sent);
+            
 
         vTaskDelay(pdMS_TO_TICKS(100));  
     }
 
-    /*
-    esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
-        if (res != ESP_OK) {
-            ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
-        }
-
-        printf("%02x %02x %02x %02x %02x %02x %02x\n",
-            dataBuffer[0], dataBuffer[1], dataBuffer[2],
-            dataBuffer[3], dataBuffer[4], dataBuffer[5],
-            dataBuffer[6]);
-
-        //sendto(sock, dataBuffer, bytes_read, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-
-        vTaskDelay(pdMS_TO_TICKS(100));
-        */
-
-
+    ESP_LOGI(TAG, "Aquisição finalizada!");
+    close(sock);
 }
