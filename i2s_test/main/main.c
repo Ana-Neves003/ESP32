@@ -142,7 +142,7 @@ void i2s_init_pdm(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH)
 }
 
 void app_main(void) {
-    
+
     // Inicializa NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -155,8 +155,6 @@ void app_main(void) {
     const char* DEST_IP = "192.168.15.183";  
     //const char* DEST_IP = "192.168.0.106";  
     const int DEST_PORT = 12345;
-
-    size_t bytes_read = 0;
 
     // Conecta Wi-Fi
     ESP_LOGI(TAG, "Iniciando conexão Wi-Fi...");
@@ -221,18 +219,20 @@ void app_main(void) {
 
     //while (1) {
     while ((xTaskGetTickCount() - start) < duracao) {
+        size_t bytes_read = 0;
         esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
         if (res != ESP_OK) {
             ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
             continue;
         }
-
+        
         // Envia dados via TCP
-            int sent = send(sock, dataBuffer, bytes_read, 0);
-            if (sent < 0) {
-                ESP_LOGE(TAG, "Falha no envio TCP");
-                break;
-            }
+          int sent = send(sock, dataBuffer, bytes_read, MSG_DONTWAIT);
+        if (sent < 0) {
+            ESP_LOGW(TAG, "Falha/sem espaço no envio TCP (errno=%d)", errno);
+            vTaskDelay(1);  // dá um respiro e tenta de novo
+            continue;
+        }
 
         printf("%02x %02x %02x %02x %02x %02x %02x\n",
             dataBuffer[0], dataBuffer[1], dataBuffer[2],
@@ -241,9 +241,10 @@ void app_main(void) {
 
             
 
-        vTaskDelay(pdMS_TO_TICKS(100));  
+        vTaskDelay(pdMS_TO_TICKS(10));  
     }
 
     ESP_LOGI(TAG, "Aquisição finalizada!");
+    vTaskDelay(pdMS_TO_TICKS(100));
     close(sock);
 }
