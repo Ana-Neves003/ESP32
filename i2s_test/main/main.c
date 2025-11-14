@@ -56,10 +56,11 @@ static QueueHandle_t xQueue;
 // ----------- Envio -------------
 #define TX_DELAY_MS       8
 
-#define DEST_IP             "192.168.15.183"
+//#define DEST_IP             "192.168.15.183"
+#define DEST_IP             "192.168.1.133"
 #define DEST_PORT           12345
 
-const uint32_t aquisicao_segundos = 30;  
+const uint32_t aquisicao_segundos = 60;  
 const TickType_t duracao = pdMS_TO_TICKS(aquisicao_segundos * 1000);
 
 /*
@@ -145,11 +146,11 @@ static void wifi_init_sta(void)
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = "VIVOFIBRA-4870-EXT",
-            //.ssid = "LASEM",
+            //.ssid = "VIVOFIBRA-4870-EXT",
+            .ssid = "LASEM",
             //.ssid = "Cerberus",
-            .password = "CC99735551",
-            //.password = "besourosuco",
+            //.password = "CC99735551",
+            .password = "besourosuco",
             //.password = "Lime@302",
         },
     };
@@ -298,7 +299,8 @@ static void task_https_send(void *pvParameters)
 
     // Configuração HTTPS
     esp_http_client_config_t config = {
-    .url = "http://192.168.15.183:8000/upload",
+    //.url = "http://192.168.15.183:8000/upload",
+    .url = "http://192.168.1.133:8000/upload",
     //.transport_type = HTTP_TRANSPORT_OVER_SSL,
     .transport_type = HTTP_TRANSPORT_OVER_TCP,
     .cert_pem = NULL,  // Ignora certificado
