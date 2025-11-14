@@ -41,7 +41,7 @@ static const char *TAG = "I2S_LOOP_HTTP";
 
 static i2s_chan_handle_t rx_handle = NULL;
 static uint8_t dataBuffer[DATA_BUFFER_SIZE];
-static const TickType_t duracao = pdMS_TO_TICKS(1000 * 60);
+//static const TickType_t duracao = pdMS_TO_TICKS(1000 * 60);
 
 
 static void wifi_init_sta(void)
@@ -161,6 +161,7 @@ void app_main(void)
     i2s_init_std(SAMPLE_RATE_ULT, BIT_DEPTH_ULT, true);
     vTaskDelay(pdMS_TO_TICKS(1000));
 
+    /*
     TickType_t start = xTaskGetTickCount();
 
     while ((xTaskGetTickCount() - start) < duracao) {
@@ -187,6 +188,39 @@ void app_main(void)
 
         vTaskDelay(pdMS_TO_TICKS(10));  
     }
+    */
+
+    int pacotes_enviados = 0;
+    const int PACOTES_MAX = 5;
+
+    while (pacotes_enviados < PACOTES_MAX) {
+        size_t bytes_read = 0;
+        esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
+
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
+            continue;
+        }
+
+        // ---- ENVIO HTTP ----
+        esp_http_client_set_method(client, HTTP_METHOD_POST);
+        esp_http_client_set_header(client, "Content-Type", "application/octet-stream");
+
+        esp_err_t err = esp_http_client_open(client, bytes_read);
+        if (err == ESP_OK) {
+            esp_http_client_write(client, (char *)dataBuffer, bytes_read);
+            esp_http_client_close(client);
+
+            ESP_LOGI(TAG, "[%d] HTTP: enviado %d bytes", pacotes_enviados + 1, bytes_read);
+            pacotes_enviados++;
+        } 
+        else {
+            ESP_LOGE(TAG, "HTTP: erro ao abrir conexão: %s", esp_err_to_name(err));
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));  // delay mínimo necessário
+    }
+
 
     ESP_LOGI(TAG, "Aquisição finalizada.");
     esp_http_client_cleanup(client);
