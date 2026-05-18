@@ -28,13 +28,7 @@
 #define MIC_CLOCK_PIN     GPIO_NUM_21
 #define MIC_DATA_PIN      GPIO_NUM_4
 #define I2S_PORT_NUM      I2S_NUM_0
-
-// REDE / ENVIO
-//#define DEST_IP             "192.168.15.183"
-//#define DEST_IP             "192.168.1.133"
-//#define DEST_PORT 12345
-//#define HTTP_URL             "http://192.168.1.133:8000/upload" 
-#define HTTP_URL             "http://192.168.15.183:8000/upload" 
+#define HTTP_URL          "http://192.168.15.78:8000/upload" 
 
 
 static const char *TAG = "I2S_LOOP_HTTP";
@@ -56,11 +50,7 @@ static void wifi_init_sta(void)
     wifi_config_t wifi_config = {
         .sta = {
             .ssid = "VIVOFIBRA-4870-EXT",
-            //.ssid = "LASEM",
-            //.ssid = "Cerberus",
             .password = "CC99735551",
-            //.password = "besourosuco",
-            //.password = "Lime@302",
         },
     };
 
@@ -102,6 +92,8 @@ static void i2s_init_std(int SAMPLE_RATE, i2s_data_bit_width_t BIT_DEPTH, bool m
             .mclk = I2S_GPIO_UNUSED,
             .bclk = modo_ult ? MIC_CLOCK_PIN : I2S_GPIO_UNUSED,
             .ws   = modo_ult ? I2S_GPIO_UNUSED : MIC_CLOCK_PIN,
+            //.bclk = modo_ult ? I2S_GPIO_UNUSED : MIC_CLOCK_PIN,
+            //.ws   = modo_ult ? MIC_CLOCK_PIN : I2S_GPIO_UNUSED,
             .dout = I2S_GPIO_UNUSED,
             .din  = MIC_DATA_PIN
         }
@@ -161,39 +153,11 @@ void app_main(void)
     i2s_init_std(SAMPLE_RATE_ULT, BIT_DEPTH_ULT, true);
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    /*
-    TickType_t start = xTaskGetTickCount();
+    //int pacotes_enviados = 0;
+    //const int PACOTES_MAX = 30;
 
-    while ((xTaskGetTickCount() - start) < duracao) {
-
-        size_t bytes_read = 0;
-        esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
-
-        if (res != ESP_OK) {
-            ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
-            continue;
-        }
-
-        esp_err_t err = esp_http_client_open(client, bytes_read);
-        if (err == ESP_OK) {
-
-            esp_http_client_write(client, (char *)dataBuffer, bytes_read);
-            esp_http_client_close(client);
-
-            ESP_LOGI(TAG, "HTTP: enviado %d bytes", bytes_read);
-
-        } else {
-            ESP_LOGE(TAG, "HTTP: erro ao abrir conexão: %s", esp_err_to_name(err));
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(10));  
-    }
-    */
-
-    int pacotes_enviados = 0;
-    const int PACOTES_MAX = 5;
-
-    while (pacotes_enviados < PACOTES_MAX) {
+    //while (pacotes_enviados < PACOTES_MAX) {
+    while (1) {
         size_t bytes_read = 0;
         esp_err_t res = i2s_channel_read(rx_handle, dataBuffer, DATA_BUFFER_SIZE, &bytes_read, portMAX_DELAY);
 
@@ -211,8 +175,9 @@ void app_main(void)
             esp_http_client_write(client, (char *)dataBuffer, bytes_read);
             esp_http_client_close(client);
 
-            ESP_LOGI(TAG, "[%d] HTTP: enviado %d bytes", pacotes_enviados + 1, bytes_read);
-            pacotes_enviados++;
+            ESP_LOGI(TAG, "[%d] HTTP: enviado %d bytes", bytes_read);
+            //ESP_LOGI(TAG, "[%d] HTTP: enviado %d bytes", pacotes_enviados + 1, bytes_read);
+            //pacotes_enviados++;
         } 
         else {
             ESP_LOGE(TAG, "HTTP: erro ao abrir conexão: %s", esp_err_to_name(err));
@@ -222,7 +187,7 @@ void app_main(void)
     }
 
 
-    ESP_LOGI(TAG, "Aquisição finalizada.");
+    //ESP_LOGI(TAG, "Aquisição finalizada.");
     esp_http_client_cleanup(client);
 
     if (rx_handle) {
