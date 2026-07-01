@@ -13,8 +13,8 @@
 #include "nvs_flash.h"
 #include "esp_wifi.h"
 
-#include "esp_timer.h"
-#include "esp_heap_caps.h"
+//#include "esp_timer.h"
+//#include "esp_heap_caps.h"
 
 #include "driver/i2s_std.h"
 #include "driver/gptimer.h"
@@ -23,7 +23,7 @@
 #include "lwip/inet.h"
 #include <unistd.h>
 
-#include "esp_http_client.h"
+//#include "esp_http_client.h"
 
 #define SAMPLE_RATE_STD  44100
 #define SAMPLE_RATE_ULT  78125
@@ -38,13 +38,15 @@
 #define MIC_DATA_PIN      GPIO_NUM_4
 #define I2S_PORT_NUM      I2S_NUM_0
 
-#define HTTP_URL          "http://192.168.15.78:8000/upload" 
+//#define HTTP_URL          "http://192.168.15.78:8000/upload" 
 
-#define DURACAO_US 500000
+#define DURACAO_US 5000000
 
 #define QUEUE_LENGTH 24
 
-#define BLOCOS_POR_ENVIO 1
+
+#define TCP_SERVER_IP "192.168.15.78"
+#define TCP_SERVER_PORT 8001
 
 static const char *TAG = "I2S_TASKS";
 
@@ -56,20 +58,13 @@ static gptimer_handle_t timer_captura = NULL;
 static volatile bool capturando = false;
 static volatile bool aquisicao_finalizada = false;
 
-static size_t total_lido = 0;
-static size_t total_enviado = 0;
-
 static int blocos_lidos = 0;
 static int blocos_enviados = 0;
 static int blocos_descartados = 0;
-static int erros_http = 0;
+//static int erros_http = 0;
 
-//Variáveis para medir quanto tempo cada envio HTTP leva
-static int64_t tempo_http_total_us = 0;
-static int64_t tempo_http_max_us = 0;
-static int envios_http_medidos = 0;
+static int socket_tcp = -1;
 
-static uint8_t buffer_envio[DATA_BUFFER_SIZE * BLOCOS_POR_ENVIO];
 
 static volatile int overflows_i2s = 0; //Medir se há overflow interno do I2S
 
@@ -133,8 +128,10 @@ static void i2s_init_std(int sample_rate, i2s_data_bit_width_t bit_depth, bool m
         .slot_cfg = {
             .data_bit_width = bit_depth,
             .slot_bit_width = bit_depth,
-            .slot_mode = I2S_SLOT_MODE_STEREO,
-            .slot_mask = I2S_STD_SLOT_BOTH,
+            //.slot_mode = I2S_SLOT_MODE_STEREO,
+            .slot_mode = I2S_SLOT_MODE_MONO,
+            //.slot_mask = I2S_STD_SLOT_BOTH,
+            .slot_mask = I2S_STD_SLOT_RIGHT,
             .ws_width = bit_depth,
             .ws_pol = false,
             .bit_shift = true
@@ -165,6 +162,7 @@ static bool IRAM_ATTR parar_aquisicao(gptimer_handle_t timer, const gptimer_alar
     return false;
 }
 
+
 static void configurar_timer(void)
 {
     gptimer_config_t timer_config = {
@@ -194,7 +192,8 @@ static void configurar_timer(void)
     );
 }
 
-static void task_aquisicao_HTTP(void *pvParameters)
+/*
+static void task_aquisicao(void *pvParameters)
 {
     bloco_i2s_t bloco;
 
@@ -217,6 +216,12 @@ static void task_aquisicao_HTTP(void *pvParameters)
 
         if (xQueueSend(fila_dados, &bloco, 0) != pdPASS) {
             blocos_descartados++;
+        }else{
+            int ocupacao_atual = uxQueueMessagesWaiting(fila_dados);
+
+            if(ocupacao_atual > maior_ocupacao_fila){
+                maior_ocupacao_fila = ocupacao_atual;
+            }
         }
     }
 
@@ -226,10 +231,133 @@ static void task_aquisicao_HTTP(void *pvParameters)
     ESP_LOGI(TAG, "Blocos lidos: %d", blocos_lidos);
     ESP_LOGI(TAG, "Total lido: %u bytes", (unsigned int)total_lido);
     ESP_LOGI(TAG, "Blocos descartados: %d", blocos_descartados);
+    ESP_LOGI(TAG, "Maior ocupacao da fila: %d blocos", maior_ocupacao_fila);
+    ESP_LOGI(TAG, "Overflows internos I2S: %d", overflows_i2s);
 
     vTaskDelete(NULL);
 }
+*/
 
+/*
+static void task_envio(void *pvParameters)
+{
+    esp_http_client_config_t http_cfg = {
+        .url = HTTP_URL,
+        .transport_type = HTTP_TRANSPORT_OVER_TCP
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&http_cfg);
+
+    esp_http_client_set_method(client, HTTP_METHOD_POST);
+    esp_http_client_set_header(client, "Content-Type", "application/octet-stream");
+
+    bloco_i2s_t bloco;
+
+    while (!aquisicao_finalizada || uxQueueMessagesWaiting(fila_dados) > 0) {
+        size_t tamanho_total = 0;
+        int blocos_no_envio = 0;
+
+        if (xQueueReceive(fila_dados, &bloco, pdMS_TO_TICKS(100)) != pdPASS) {
+            continue;
+        }
+
+        memcpy(buffer_envio + tamanho_total, bloco.dados, bloco.tamanho);
+        tamanho_total += bloco.tamanho;
+        blocos_no_envio++;
+
+        while (blocos_no_envio < BLOCOS_POR_ENVIO &&
+               xQueueReceive(fila_dados, &bloco, 0) == pdPASS) {
+
+            memcpy(buffer_envio + tamanho_total, bloco.dados, bloco.tamanho);
+            tamanho_total += bloco.tamanho;
+            blocos_no_envio++;
+        }
+
+        esp_err_t err = esp_http_client_open(client, tamanho_total);
+
+        if (err == ESP_OK) {
+            int bytes_enviados = esp_http_client_write(
+                client,
+                (char *)buffer_envio,
+                tamanho_total
+            );
+
+            esp_http_client_close(client);
+
+            if (bytes_enviados == tamanho_total) {
+                total_enviado += bytes_enviados;
+                blocos_enviados += blocos_no_envio;
+            } else {
+                erros_http++;
+                ESP_LOGE(TAG, "HTTP: enviou %d de %d bytes",
+                         bytes_enviados, tamanho_total);
+            }
+
+        } else {
+            erros_http++;
+            ESP_LOGE(TAG, "HTTP: erro ao abrir conexao: %s",
+                     esp_err_to_name(err));
+        }
+    }
+
+    ESP_LOGI(TAG, "Envio finalizado.");
+    ESP_LOGI(TAG, "Blocos enviados: %d", blocos_enviados);
+    ESP_LOGI(TAG, "Total enviado: %u bytes", (unsigned int)total_enviado);
+    ESP_LOGI(TAG, "Erros HTTP: %d", erros_http);
+
+    esp_http_client_cleanup(client);
+    vTaskDelete(NULL);
+}
+*/
+
+static int conectar_tcp(void)
+{
+    int socket_tcp = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+
+    if (socket_tcp < 0) {
+        ESP_LOGE(TAG, "Erro ao criar socket TCP");
+        return -1;
+    }
+
+    struct sockaddr_in destino = {
+        .sin_family = AF_INET,
+        .sin_port = htons(TCP_SERVER_PORT),
+        .sin_addr.s_addr = inet_addr(TCP_SERVER_IP)
+    };
+
+    if (connect(socket_tcp, (struct sockaddr *)&destino, sizeof(destino)) != 0) {
+        ESP_LOGE(TAG, "Erro ao conectar ao servidor TCP");
+        close(socket_tcp);
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "Conectado ao servidor TCP");
+    return socket_tcp;
+}
+
+static int enviar_tcp_completo(int socket_tcp, const uint8_t *dados, size_t tamanho)
+{
+    size_t total_enviado_socket = 0;
+
+    while (total_enviado_socket < tamanho) {
+        int enviado = send(
+            socket_tcp,
+            dados + total_enviado_socket,
+            tamanho - total_enviado_socket,
+            0
+        );
+
+        if (enviado <= 0) {
+            return -1;
+        }
+
+        total_enviado_socket += enviado;
+    }
+
+    return total_enviado_socket;
+}
+
+/*
 static void task_envio_HTTP(void *pvParameters)
 {
     esp_http_client_config_t http_cfg = {
@@ -317,7 +445,293 @@ static void task_envio_HTTP(void *pvParameters)
     esp_http_client_cleanup(client);
     vTaskDelete(NULL);
 }
+*/
 
+/*
+static void task_envio_TCP(void *pvParameters)
+{
+    bloco_i2s_t bloco;
+
+    while (!aquisicao_finalizada || uxQueueMessagesWaiting(fila_dados) > 0) {
+        if (xQueueReceive(fila_dados, &bloco, pdMS_TO_TICKS(100)) != pdPASS) {
+            continue;
+        }
+
+        int bytes_enviados = enviar_tcp_completo(
+            socket_tcp,
+            bloco.dados,
+            bloco.tamanho
+        );
+
+        if (bytes_enviados == bloco.tamanho) {
+            total_enviado += bytes_enviados;
+            blocos_enviados++;
+        } else {
+            erros_http++;
+            ESP_LOGE(TAG, "Erro no envio TCP");
+            break;
+        }
+    }
+
+    close(socket_tcp);
+
+    ESP_LOGI(TAG, "Envio TCP finalizado.");
+    ESP_LOGI(TAG, "Blocos enviados: %d", blocos_enviados);
+    ESP_LOGI(TAG, "Total enviado: %u bytes", (unsigned int)total_enviado);
+    ESP_LOGI(TAG, "Erros TCP: %d", erros_http);
+
+    vTaskDelete(NULL);
+}
+*/
+
+static void task_envio_TCP(void *pvParameters)
+{
+    bloco_i2s_t bloco;
+
+    while (!aquisicao_finalizada || uxQueueMessagesWaiting(fila_dados) > 0) {
+        //size_t tamanho_total = 0;
+        //int blocos_no_envio = 0;
+
+        //Aguarda um bloco da fila. se houve timeout e a aquisição acabou, o loop principal encerra
+        if (xQueueReceive(fila_dados, &bloco, pdMS_TO_TICKS(100)) != pdPASS) {
+            continue;
+        }
+
+        //memcpy(buffer_envio + tamanho_total, bloco.dados, bloco.tamanho);
+        //tamanho_total += bloco.tamanho;
+        //blocos_no_envio++;
+
+        /*
+        while (blocos_no_envio < BLOCOS_POR_ENVIO) {
+            if (xQueueReceive(fila_dados, &bloco, pdMS_TO_TICKS(10)) == pdPASS) {
+                memcpy(buffer_envio + tamanho_total, bloco.dados, bloco.tamanho);
+                tamanho_total += bloco.tamanho;
+                blocos_no_envio++;
+            } else if (aquisicao_finalizada) {
+                break;
+            }
+        }
+        */
+
+        int bytes_enviados = enviar_tcp_completo(
+            socket_tcp,
+            bloco.dados,
+            bloco.tamanho
+            //buffer_envio,
+            //tamanho_total
+        );
+
+        if (bytes_enviados == bloco.tamanho) {
+            //total_enviado += bytes_enviados;
+            blocos_enviados++;
+        } else {
+            //erros_http++;
+            ESP_LOGE(TAG, "Erro no envio TCP. Conexão perdida");
+            break;
+        }
+    }
+
+    close(socket_tcp);
+
+    ESP_LOGI(TAG, "Envio TCP finalizado.");
+    ESP_LOGI(TAG, "Blocos enviados: %d", blocos_enviados);
+    //ESP_LOGI(TAG, "Total enviado: %u bytes", (unsigned int)total_enviado);
+    //ESP_LOGI(TAG, "Erros TCP: %d", erros_http);
+
+    vTaskDelete(NULL);
+}
+
+/*
+static void task_envio_TCP(void *pvParameters)
+{
+    int socket_tcp = conectar_tcp();
+
+    if (socket_tcp < 0) {
+        ESP_LOGE(TAG, "Nao foi possivel iniciar o envio TCP");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    bloco_i2s_t bloco;
+
+    while (true) {
+        if (xQueueReceive(fila_dados, &bloco, pdMS_TO_TICKS(100)) != pdPASS) {
+            if (aquisicao_finalizada) {
+                break;
+            }
+
+            continue;
+        }
+
+        int64_t inicio_envio = esp_timer_get_time();
+
+        int bytes_enviados = enviar_tcp_completo(
+            socket_tcp,
+            bloco.dados,
+            bloco.tamanho
+        );
+
+        int64_t tempo_envio_us = esp_timer_get_time() - inicio_envio;
+
+        tempo_http_total_us += tempo_envio_us;
+
+        if (tempo_envio_us > tempo_http_max_us) {
+            tempo_http_max_us = tempo_envio_us;
+        }
+
+        envios_http_medidos++;
+
+        if (bytes_enviados == bloco.tamanho) {
+            total_enviado += bytes_enviados;
+            blocos_enviados++;
+        } else {
+            erros_http++;
+            ESP_LOGE(TAG, "Erro no envio TCP");
+
+            close(socket_tcp);
+
+            do {
+                socket_tcp = conectar_tcp();
+            } while (socket_tcp < 0);
+
+            bytes_enviados = enviar_tcp_completo(
+                socket_tcp,
+                bloco.dados,
+                bloco.tamanho
+            );
+
+            if (bytes_enviados == bloco.tamanho) {
+                total_enviado += bytes_enviados;
+                blocos_enviados++;
+            } else {
+                erros_http++;
+            }
+        }
+    }
+
+    close(socket_tcp);
+
+    ESP_LOGI(TAG, "Envio TCP finalizado.");
+    ESP_LOGI(TAG, "Blocos enviados: %d", blocos_enviados);
+    ESP_LOGI(TAG, "Total enviado: %u bytes", (unsigned int)total_enviado);
+    ESP_LOGI(TAG, "Erros TCP: %d", erros_http);
+
+    if (envios_http_medidos > 0) {
+        ESP_LOGI(TAG, "Tempo medio TCP: %lld us",
+                 tempo_http_total_us / envios_http_medidos);
+
+        ESP_LOGI(TAG, "Tempo maximo TCP: %lld us",
+                 tempo_http_max_us);
+    }
+
+    vTaskDelete(NULL);
+}
+    */
+
+static void task_aquisicao_HTTP(void *pvParameters)
+{
+    bloco_i2s_t bloco;
+
+    while (capturando) {
+        esp_err_t res = i2s_channel_read(
+            rx_handle,
+            bloco.dados,
+            DATA_BUFFER_SIZE,
+            &bloco.tamanho,
+            portMAX_DELAY
+        );
+
+        if (res != ESP_OK) {
+            ESP_LOGE(TAG, "Erro na leitura do I2S: %s", esp_err_to_name(res));
+            continue;
+        }
+
+        //total_lido += bloco.tamanho;
+        blocos_lidos++;
+
+        if (xQueueSend(fila_dados, &bloco, 0) != pdPASS) {
+            blocos_descartados++;
+        }
+    }
+
+    aquisicao_finalizada = true;
+
+    ESP_LOGI(TAG, "Aquisicao finalizada.");
+    ESP_LOGI(TAG, "Blocos lidos: %d", blocos_lidos);
+    //ESP_LOGI(TAG, "Total lido: %u bytes", (unsigned int)total_lido);
+    ESP_LOGI(TAG, "Blocos descartados: %d", blocos_descartados);
+
+    vTaskDelete(NULL);
+}
+
+/*
+static void task_envio_HTTP(void *pvParameters)
+{
+    esp_http_client_config_t http_cfg = {
+        .url = HTTP_URL,
+        .transport_type = HTTP_TRANSPORT_OVER_TCP
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&http_cfg);
+
+    esp_http_client_set_method(client, HTTP_METHOD_POST);
+    esp_http_client_set_header(
+        client,
+        "Content-Type",
+        "application/octet-stream"
+    );
+
+    bloco_i2s_t bloco;
+
+    while (!aquisicao_finalizada || uxQueueMessagesWaiting(fila_dados) > 0) {
+
+        if (xQueueReceive(fila_dados, &bloco, pdMS_TO_TICKS(100)) != pdPASS) {
+            continue;
+        }
+
+        esp_err_t err = esp_http_client_open(client, bloco.tamanho);
+
+        if (err == ESP_OK) {
+            int bytes_enviados = esp_http_client_write(
+                client,
+                (char *)bloco.dados,
+                bloco.tamanho
+            );
+
+            esp_http_client_close(client);
+
+            if (bytes_enviados == bloco.tamanho) {
+                total_enviado += bytes_enviados;
+                blocos_enviados++;
+            } else {
+                erros_http++;
+                ESP_LOGE(
+                    TAG,
+                    "HTTP: enviou %d de %d bytes",
+                    bytes_enviados,
+                    bloco.tamanho
+                );
+            }
+
+        } else {
+            erros_http++;
+            ESP_LOGE(
+                TAG,
+                "HTTP: erro ao abrir conexão: %s",
+                esp_err_to_name(err)
+            );
+        }
+    }
+
+    ESP_LOGI(TAG, "Envio finalizado.");
+    ESP_LOGI(TAG, "Blocos enviados: %d", blocos_enviados);
+    ESP_LOGI(TAG, "Total enviado: %u bytes", (unsigned int)total_enviado);
+    ESP_LOGI(TAG, "Erros HTTP: %d", erros_http);
+
+    esp_http_client_cleanup(client);
+    vTaskDelete(NULL);
+}
+*/
 void app_main(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -360,11 +774,9 @@ void app_main(void)
 
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    ESP_LOGI(TAG, "RAM interna livre: %u bytes", (unsigned int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
-
-    ESP_LOGI(TAG, "Maior bloco livre RAM interna: %u bytes", (unsigned int)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
-
-    ESP_LOGI(TAG, "PSRAM livre: %u bytes", (unsigned int)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    //ESP_LOGI(TAG, "RAM interna livre: %u bytes", (unsigned int)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    //ESP_LOGI(TAG, "Maior bloco livre RAM interna: %u bytes", (unsigned int)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    //ESP_LOGI(TAG, "PSRAM livre: %u bytes", (unsigned int)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
          
     fila_dados = xQueueCreate(QUEUE_LENGTH, sizeof(bloco_i2s_t));
 
@@ -377,11 +789,18 @@ void app_main(void)
 
     overflows_i2s = 0;
 
+    socket_tcp = conectar_tcp();
+
+    if (socket_tcp < 0) {
+        ESP_LOGE(TAG, "Nao foi possivel conectar ao servidor TCP");
+        return;
+    }
+
     capturando = true;
     aquisicao_finalizada = false;
 
     xTaskCreatePinnedToCore(task_aquisicao_HTTP, "Aquisicao", 8192, NULL, 10, NULL, 1);
-    xTaskCreatePinnedToCore(task_envio_HTTP, "Envio", 8192, NULL, 5, NULL, 0);
+    xTaskCreatePinnedToCore(task_envio_TCP, "Envio", 8192, NULL, 5, NULL, 0);
 
     ESP_ERROR_CHECK(gptimer_enable(timer_captura));
     ESP_ERROR_CHECK(gptimer_start(timer_captura));
